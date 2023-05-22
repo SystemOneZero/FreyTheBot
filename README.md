@@ -5,7 +5,7 @@ Project is currently being built...
 
 Changelog 1.1
 
-old methods
+old methods<br>
 !join used to join the channel you want it to listen in.<br>
 !disc used to make it leave voicechannel.
 
