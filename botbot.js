@@ -1,5 +1,5 @@
-//botbot.js
-const { Client, IntentsBitField, GatewayIntentBits, VoiceState, VoiceStateManager,voiceAdapterCreator } = require("discord.js");
+//botbot.js requirements they will be slimmed down later on.
+const { Client, IntentsBitField, GatewayIntentBits, VoiceState, VoiceStateManager,voiceAdapterCreator, VoiceChannel, Events } = require("discord.js");
 const { Configuration, OpenAIApi } = require("openai");
 require('dotenv').config();
 const { joinVoiceChannel, createAudioPlayer } = require('@discordjs/voice');
@@ -10,6 +10,7 @@ const gTTS = require('gtts');
 const fs = require('fs');
 const { exec } = require('child_process');
 
+//currently not in use
 //var SpeechRecognition = SpeechRecognition;
 //var recognition = new SpeechRecognition();
 //const { speech_recognition } = require('spech_recognition') 
@@ -24,11 +25,31 @@ const voiceChannel="";
 const iloc=525;
 const GUILD_ID = process.env.Guild_ID;
 const CLIENT_ID = process.env.Client_ID;
-var word1 = 'Motherfucking text to speech, lets go brother numsi'
-var gtts = new gTTS(word1, 'en');
+var word1 = 'Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu';
+var word2 = '';
+var primp = '';
+//var gtts = new gTTS(word1, 'en');
 const keyword = 'genius'; // Keyword to detect
+//var random1 =""; //unused
 
+
+//intents for bot, don't really like how they do these, why not set them on the developer api page. constantly changeing it seems.
 const client = new Client({ intents: [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.MessageContent,
+  GatewayIntentBits.GuildMembers,
+  GatewayIntentBits.GuildVoiceStates,
+  GatewayIntentBits.DirectMessages,
+  GatewayIntentBits.GuildMessageTyping,
+  GatewayIntentBits.GuildMessageReactions,
+  GatewayIntentBits.DirectMessageReactions,
+  GatewayIntentBits.GuildVoiceStates,
+  GatewayIntentBits.GuildInvites,
+] });
+
+/** 
+//const client = new Client({ intents: [
 IntentsBitField.Flags.Guilds,
 IntentsBitField.Flags.GuildMessages,
 IntentsBitField.Flags.MessageContent,
@@ -40,8 +61,8 @@ IntentsBitField.Flags.GuildMessageReactions,
 IntentsBitField.Flags.DirectMessageReactions,
 IntentsBitField.Flags.GuildVoiceStates,
 IntentsBitField.Flags.GuildInvites,
-    
 ]})
+*/
 
 const configuration = new Configuration({
   apiKey: process.env.API_KEY,
@@ -53,10 +74,15 @@ var prampts ="";
  async function prompty(prampts) {
 const completion = await openai.createCompletion({
   model: "text-davinci-003",
-  prompt: prampts,                            //change prampts to make requests.
+  prompt: prampts,
+  max_tokens: 1200,
+  n: 1,
+  stop: null,
+  temperature: 0.5,                            //change prampts to make requests.
 });
 console.log(completion.data.choices[0].text);
-return completion.data.choices[0].text
+primp = completion.data.choices[0].text;
+return completion.data.choices[0].text;
 }
 
 var petty ="";
@@ -64,18 +90,27 @@ var petty ="";
 async function setPet(petty) {
   const completion = await openai.createCompletion({
     model: "text-davinci-003",
-    prompt: petty,                            //change this to a physical file on the drive, to put all this information into a text file.
+    prompt: petty,
+    max_tokens: 1200,
+    n: 1,
+    stop: null,
+    temperature: 0.5,                            //change this to a physical file on the drive, to put all this information into a text file.
   });
   console.log(completion.data.choices[0].text);
   }
 
 function getPrompt(){} //this will read our notecard and set the personality later on.
 
-var primp = "";
+function sleep(ms) { //Some dumb function to time things, this is probably really poor code.
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+
 //var primp = prompty() setting this variable will change sendTTs methods input
 
-function saveTTS(primp){
-  word1 = primp; //change this to change the text it saves into mp3
+async function saveTTS(primp){
+  //word2 = primp; //d1 = primp; //change this to change the text it saves into mp3
+  var gtts =  new gTTS(primp, 'en');
   gtts.save('file.mp3', function (err, result) {
     if(err) { throw new Error(err) }
     //console.log('Success! Open file file.mp3 to hear result.');
@@ -91,14 +126,11 @@ function saveTTS(primp){
 
 }//will handle all our sound output most likely will take our prompty functions output
 
+//this should in theory record audio to to a user_audio.pcm file
 function recordtoFile(){
   const audio = connection.receiver.createStream(user, { mode: 'pcm' });
   audio.pipe(fs.createWriteStream('user_audio.pcm'));
-  
 }
-
-var random1 ="";
-
 
 client.on("ready", () => {
     console.log(`Logged in as ${client.user.tag}!`)
@@ -115,13 +147,13 @@ client.on("messageCreate", (message) => {
   const member = message.guild.members.cache.get(CLIENT_ID);
 
   if (message.content === '!join'){  //make this boii join our channel, we gotta do some bot manipulation
-    if (!chanJo) return console.error("channel is dead motherfucker");
+    if (!chanJo) return console.error("channel is missing or wrong id");
     if (joined == 0) {
     //message.reply("joining channel...");
 
     joinVoiceChannel({
         channelId: chanJo,
-        guildId: message.guild.id,
+        guildId: GUILD_ID,
         selfDeaf: false,
         selfMute: false,
         adapterCreator: message.guild.voiceAdapterCreator
@@ -130,8 +162,8 @@ client.on("messageCreate", (message) => {
     joined = 1;
 
     chanJoined = chanJo;
-    while (true){listenTTS();}
-  }
+    //while (true){listenTTS();}
+  }}
   
   if (message.content === '!disconnect' || message.content === '!disc'){
     try {connection.destroy(); joined = 0;
@@ -140,9 +172,45 @@ client.on("messageCreate", (message) => {
       console.error('error occured trying to leave vc');
     }
   }
+
+  //trying to understand how audioplayer works here.
+  //AudioPlayer#pause(), AudioPlayer#unpause(), and AudioPlayer#stop().
+
+  //const resource = createAudioResource('/home/user/voice/track.mp3'); example of user source to play.
   
+  if (message.content === '!test') {
+    const resource = createAudioResource('file.mp3');
+    const player = createAudioPlayer();
+    const sam = connection.subscribe(player);
+    sam.player.play(resource);
+  }
+
+  if (message.content.startsWith('!gpt')) {
+    //message.content // we need to read this bullshit for everything after !gpt
+    var mans = message.content;
+    //console.log('message content is :' , message.content);
+    var not = mans.trim();
+    //console.log('error : 1');
+    var hot = not.length;
+    //console.log('error : 2');
+    var skraa = not.substring(5, hot);
+    //console.log('error : 3');
+    var ting = skraa;
+    //console.log('error : 4', ting);
+    var quest = prompty(ting); //we gotta set the question here.
+    //sleep(9000);
+    //console.log('error : 5', quest);
+    //primp = quest;
+    //console.log('error : 6', primp);
+    //saveTTS(primp);    
+  }
+
+  if(message.content ===('!savegpt')){
+    saveTTS(primp);
+  }
+
   //var slimp = "";
-  async function listenTTS(){ //allright we should describe what is going on here. setting up the listenting interface. from voiceconnection.
+  function listenTTS(){ //allright we should describe what is going on here. setting up the listening interface. from voiceconnection.
     const channel = message.member.voice.channel;
     //const connection = await channel.join();
     const receiver = connection.receiver;
@@ -168,6 +236,7 @@ client.on("messageCreate", (message) => {
     //    except:
     //        print('Skipping unknown error')
     //converting audio to text takes a filename
+  }
 
   function tatt(fefifofum){
     const command = `ffmpeg -f s16le -ar 48k -ac 2 -i ${fefifofum} -acodec pcm_s16le -f wav -`;
@@ -182,40 +251,38 @@ client.on("messageCreate", (message) => {
     )
   }
   
-  function convertAudioToText(audioData) { // Implement your speech recognition logic hereo convert audio to text
+  function convertAudioToText(audioData) { // Implement your speech recognition logic here convert audio to text
 
     var textda = "";
     return textda;
   } // This function should return the recognized text from the audio data
   
-  if (message.content === '!ping') {
+  if (message.content === '!ping') {  //just a leftover method from discord bot beginner example.
     message.channel.send('pong');
   }
 
-}})
+})
 
 //connection.on(VoiceConnectionStatus.Ready, () => {
 //	console.log('The connection has entered the Ready state - ready to play audio!');
 //});
 
-client.login(process.env.DISCORD_TOKEN)
+client.login(process.env.DISCORD_TOKEN);    //if nothing happens we are running the bot here, takes our token.
+
+
+//Section of garbage i may not need later.
 
 /** import * from os
 import discord
 from discord.ext import commands
 from discord.utils import get
 import node
-
 //trying to aquire the stuff we need from voice channels
 VC = node.require('discordjs/voice')
-
 from dotenv import load_dotenv
-
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-
 client = discord.Client(intents=discord.Intents.default())
-
 @client.event
 async def on_ready():
     print(f'{client.user} has connected to Discord!')   //next line should contain obligatory connect to the voice channel.
@@ -244,8 +311,8 @@ async def on_ready():
 #voice.channel.join()
 #const { getVoiceConnection } = require('@discordjs/voice');
 #const connection = getVoiceConnection(myVoiceChannel.guild.id);
-#channy = client.fetch_channel(281552655912927242)
-#channy2 = client.get_channel (281552655912927242)
+#channy = client.fetch_channel()
+#channy2 = client.get_channel ()
 #channy2.connect (*,timeout: float = 60, reconnect: bool = True, cls: ((Client, Connectable) -> T@connect) = VoiceClient, 
 #self_deaf: bool = False, self_mute: bool = False)
 #((*, timeout: float = 60, reconnect: bool = True, cls: ((Client, Connectable) -> T@connect) = VoiceClient, 
@@ -348,5 +415,4 @@ def main():
             except Exception as e:
                         print("an error occured: {}".format(e))
 if __name__ == "__main__":
-
 */
