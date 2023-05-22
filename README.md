@@ -16,3 +16,7 @@ Added three methods that run currently to test it out a bit.
 !test -- plays the prompt via discord<br>
 
 These are tempoary and only serve as proof of concept atm.
+
+To run this, you need to have a .env file setup with the right values<br>
+an api key from your prefered llm, and if not openai you need to change the api calls<br>
+if you prefer a different voice to read, you can look into the pay voices, the big ones, azure,google,whisper. or train your own neural voice.
