@@ -3,35 +3,39 @@ const { Client, IntentsBitField, GatewayIntentBits, VoiceState, VoiceStateManage
 const { Configuration, OpenAIApi } = require("openai");
 require('dotenv').config();
 const { joinVoiceChannel, createAudioPlayer } = require('@discordjs/voice');
-const { getVoiceConnection, createAudioResource, StreamType } = require('@discordjs/voice');
+const { getVoiceConnection, createAudioResource, StreamType, generateDependencyReport, Receiver, AudioPlayerStatus} = require('@discordjs/voice');
 const { createReadStream } = require('node:fs');
 const { join } = require('node:path');
 const gTTS = require('gtts');
 const fs = require('fs');
 const { exec } = require('child_process');
+const { group, Console } = require("node:console");
 
-//currently not in use
+// currently not in use //
 //var SpeechRecognition = SpeechRecognition;
 //var recognition = new SpeechRecognition();
 //const { speech_recognition } = require('spech_recognition') 
 //import speech_recognition as sr
 //const { createAudioPlayer } = require('@discordjs/voice');
 
-//variables
-const chanJo ="281552655912927242";
-var joined = 0;
-var chanJoined = "";
-const voiceChannel="";
-const iloc=525;
-const GUILD_ID = process.env.Guild_ID;
-const CLIENT_ID = process.env.Client_ID;
-var word1 = 'Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu';
-var word2 = '';
-var primp = '';
-//var gtts = new gTTS(word1, 'en');
-const keyword = 'genius'; // Keyword to detect
-//var random1 =""; //unused
+// variables //
+const chanJo ="281552655912927242";       //channel to change for our join.
+var joined = 0;                           //Simply an intenger that shows if we are in a channel.
+var chanJoined = "";                      //Maybe we save the channel here shows which channel we are in.
+const GUILD_ID = process.env.Guild_ID;    //guild id
+const CLIENT_ID = process.env.Client_ID;  //client id
+var primp = '';                           //a variable we use to store the prompt to open ai.
+const keyword = 'genius';                 //Keyword to detect we still cannot detect this yet.
+const player = createAudioPlayer();       //We create an audio player to access.
+//resource for our playback.
 
+// vars not in use //
+//var gtts = new gTTS(word1, 'en');
+//var random1 =""; //unused
+//const voiceChannel="";
+//var word2 = '';
+//const iloc=525;
+//var word1 = 'Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu Uwu';
 
 //intents for bot, don't really like how they do these, why not set them on the developer api page. constantly changeing it seems.
 const client = new Client({ intents: [
@@ -48,22 +52,6 @@ const client = new Client({ intents: [
   GatewayIntentBits.GuildInvites,
 ] });
 
-/** 
-//const client = new Client({ intents: [
-IntentsBitField.Flags.Guilds,
-IntentsBitField.Flags.GuildMessages,
-IntentsBitField.Flags.MessageContent,
-IntentsBitField.Flags.GuildMembers,
-IntentsBitField.Flags.GuildVoiceStates,
-IntentsBitField.Flags.DirectMessages,
-IntentsBitField.Flags.GuildMessageTyping,
-IntentsBitField.Flags.GuildMessageReactions,
-IntentsBitField.Flags.DirectMessageReactions,
-IntentsBitField.Flags.GuildVoiceStates,
-IntentsBitField.Flags.GuildInvites,
-]})
-*/
-
 const configuration = new Configuration({
   apiKey: process.env.API_KEY,
 });
@@ -75,7 +63,7 @@ var prampts ="";
 const completion = await openai.createCompletion({
   model: "text-davinci-003",
   prompt: prampts,
-  max_tokens: 1200,
+  max_tokens: 2048,
   n: 1,
   stop: null,
   temperature: 0.5,                            //change prampts to make requests.
@@ -91,7 +79,7 @@ async function setPet(petty) {
   const completion = await openai.createCompletion({
     model: "text-davinci-003",
     prompt: petty,
-    max_tokens: 1200,
+    max_tokens: 2048,
     n: 1,
     stop: null,
     temperature: 0.5,                            //change this to a physical file on the drive, to put all this information into a text file.
@@ -99,30 +87,20 @@ async function setPet(petty) {
   console.log(completion.data.choices[0].text);
   }
 
-function getPrompt(){} //this will read our notecard and set the personality later on.
+//this will read our notecard and set the personality later on.
+function getPrompt(){} 
 
-function sleep(ms) { //Some dumb function to time things, this is probably really poor code.
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+//function we wrote to cause a delay in the execution of code.
+function delay(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); } 
 
-
-//var primp = prompty() setting this variable will change sendTTs methods input
-
+//saves our file
 async function saveTTS(primp){
   //word2 = primp; //d1 = primp; //change this to change the text it saves into mp3
   var gtts =  new gTTS(primp, 'en');
   gtts.save('file.mp3', function (err, result) {
     if(err) { throw new Error(err) }
-    //console.log('Success! Open file file.mp3 to hear result.');
+    //console.log('Fail: we failed to save the text as a mp3');
   });
-
-  //const audio = connection.receiver.createStream(user, { mode: 'pcm' });
-  //audio.pipe(fs.createWriteStream('user_audio'));
-
-  //let resource = createAudioResource(join(__dirname, 'file.mp3'));
-
-  //player.play(resource);
-
 
 }//will handle all our sound output most likely will take our prompty functions output
 
@@ -132,36 +110,44 @@ function recordtoFile(){
   audio.pipe(fs.createWriteStream('user_audio.pcm'));
 }
 
+//Regular expressions when the bot is ready.
 client.on("ready", () => {
     console.log(`Logged in as ${client.user.tag}!`)
-    //sendTTS();
+    //console.log(generateDependencyReport()); //check for dependancies of your voice capabilities.
     //setPet() uncomment this to use the personality prompt later.      
 })
-  
-client.on("messageCreate", (message) => {
-  if (message.author.bot) return;
-  //var member0 = message.guild.members.cache.get(process.env.Client_ID);
-  const guild = message.guild
-  const myVoiceChannel = guild.channels.cache.find(channel => channel.type === 'GUILD_VOICE' && channel.members.has(message.author.id));
-  const connection = getVoiceConnection(GUILD_ID);
-  const member = message.guild.members.cache.get(CLIENT_ID);
 
+//message handler
+client.on("messageCreate", async (message) => {
+  const connection = getVoiceConnection(GUILD_ID);
+  if (message.author.bot && message.content === '!runVoice') soundOut();  
+  if (message.author.bot && message.content !== '!runVoice') return;
+  //const Djcone = message.member.voice.channel;
+  //var member0 = message.guild.members.cache.get(process.env.Client_ID);
+  //const member = message.guild.members.cache.get(CLIENT_ID);
+  //const guild = message.member.voice.channel
+  //const myVoiceChannel = guild.channels.cache.find(channel => channel.type === 'GUILD_VOICE' && channel.members.has(message.author.id));
+  
   if (message.content === '!join'){  //make this boii join our channel, we gotta do some bot manipulation
     if (!chanJo) return console.error("channel is missing or wrong id");
     if (joined == 0) {
     //message.reply("joining channel...");
 
-    joinVoiceChannel({
+    const connection = joinVoiceChannel({
         channelId: chanJo,
         guildId: GUILD_ID,
         selfDeaf: false,
         selfMute: false,
+        deaf: false,
+        mute: false,        
         adapterCreator: message.guild.voiceAdapterCreator
     })
 
     joined = 1;
 
     chanJoined = chanJo;
+    
+    return connection;
     //while (true){listenTTS();}
   }}
   
@@ -173,71 +159,55 @@ client.on("messageCreate", (message) => {
     }
   }
 
-  //trying to understand how audioplayer works here.
-  //AudioPlayer#pause(), AudioPlayer#unpause(), and AudioPlayer#stop().
-
-  //const resource = createAudioResource('/home/user/voice/track.mp3'); example of user source to play.
-  
-  if (message.content === '!test') {
-    const resource = createAudioResource('file.mp3');
-    const player = createAudioPlayer();
+   if (message.content === '!runVoice') {
+    const resource2 = createAudioResource('file.mp3');
     const sam = connection.subscribe(player);
+    sam.player.play(resource2);    
+  }
+
+  function soundOut() {
+    const sam = connection.subscribe(player);  
+    if (message.content === '!runVoice') {
+    const resource = createAudioResource('file.mp3');
     sam.player.play(resource);
+  }    
   }
 
   if (message.content.startsWith('!gpt')) {
     //message.content // we need to read this bullshit for everything after !gpt
     var mans = message.content;
-    //console.log('message content is :' , message.content);
     var not = mans.trim();
-    //console.log('error : 1');
     var hot = not.length;
-    //console.log('error : 2');
     var skraa = not.substring(5, hot);
-    //console.log('error : 3');
     var ting = skraa;
-    //console.log('error : 4', ting);
     var quest = prompty(ting); //we gotta set the question here.
-    //sleep(9000);
-    //console.log('error : 5', quest);
-    //primp = quest;
-    //console.log('error : 6', primp);
-    //saveTTS(primp);    
+       
+    slowDown();
   }
 
+  // our attempt at making a function to output everything with just !gpt currently gives an error and i need to figure out the proper way to do this
+  async function slowDown(){
+    let solved = false;
+    while (!solved){
+      try {
+        await quest;
+        saveTTS(primp);
+        solved = true;
+      } catch (error) {
+        console.log("Error in your tts", error.message); // logs your error message
+        //wait for a while
+        await delay(4000);
+      }
+    }
+    message.reply('!runVoice');
+  }
+
+  //Old prompt we used to simply just save the current open ai prompt. Saves a file.mp3
   if(message.content ===('!savegpt')){
     saveTTS(primp);
   }
-
-  //var slimp = "";
-  function listenTTS(){ //allright we should describe what is going on here. setting up the listening interface. from voiceconnection.
-    const channel = message.member.voice.channel;
-    //const connection = await channel.join();
-    const receiver = connection.receiver;
-
-  receiver.speaking.on('start', (userId) => { //triggers an event on user speaking, gets a user returs their username
-      const user = client.users.cache.get(userId);
-      console.log(`Bot is now listening to ${user.username}`);
-      convertAudioToText(data);
-      //where we need to listen for keyword, if keyword is not heard, do not record audio.
-    });
-
-    receiver.speaking.on('end', (userId) => {
-      const user = client.users.cache.get(userId);
-      //when keyword has been spoken and user stops speaking
-      console.log(`Bot stopped listening to ${user.username}`);
-    });
-
-    //def transcribe_audio_to_text(filename):     
-    //with sr.AudioFile(filename) as source:
-    //    audio = recognizer.record(source)
-    //    try:
-    //        return recognizer.recognize_google(audio)
-    //    except:
-    //        print('Skipping unknown error')
-    //converting audio to text takes a filename
-  }
-
+  
+  // trying to make a proper recording this is not used yet.
   function tatt(fefifofum){
     const command = `ffmpeg -f s16le -ar 48k -ac 2 -i ${fefifofum} -acodec pcm_s16le -f wav -`;
     exec(command, ( error,stdout,stderr) => {
@@ -251,26 +221,98 @@ client.on("messageCreate", (message) => {
     )
   }
   
+  //This is where we need to do proper recog from discord if we get it working.
   function convertAudioToText(audioData) { // Implement your speech recognition logic here convert audio to text
 
     var textda = "";
     return textda;
   } // This function should return the recognized text from the audio data
   
-  if (message.content === '!ping') {  //just a leftover method from discord bot beginner example.
+  if (message.content === '!ping') {  //just a leftover method from discord bot beginner example. to test bot is repsonvive to text.
     message.channel.send('pong');
   }
 
 })
 
-//connection.on(VoiceConnectionStatus.Ready, () => {
-//	console.log('The connection has entered the Ready state - ready to play audio!');
-//});
+player.on(AudioPlayerStatus.Playing, () => {
+	console.log('The audio player has started playing!');
+});
+
+player.on(AudioPlayerStatus.Paused, () => {
+	console.log('The audio player is paused');
+});
+
+player.on(AudioPlayerStatus.Idle, () => {
+	console.log('The audio player is idle');
+});
+
+player.on(AudioPlayerStatus.Buffering, () => {
+	console.log('The audio player is buffering');
+});
+
+player.on(AudioPlayerStatus.AutoPaused, () => {
+	console.log('The audio player is AutoPaused');
+});
 
 client.login(process.env.DISCORD_TOKEN);    //if nothing happens we are running the bot here, takes our token.
 
 
-//Section of garbage i may not need later.
+// Section of garbage i may not need later. //
+
+//var primp = prompty() setting this variable will change sendTTs methods input
+
+//const audio = connection.receiver.createStream(user, { mode: 'pcm' });
+  //audio.pipe(fs.createWriteStream('user_audio'));
+
+  //let resource = createAudioResource(join(__dirname, 'file.mp3'));
+
+  //player.play(resource);
+
+//sleep(9000);
+  //console.log('request finished');
+  //primp = quest;
+  //console.log('error : 6', quest);
+  //saveTTS(primp); 
+
+  /** 
+  //var slimp = "";
+  function listenTTS(){ //allright we should describe what is going on here. setting up the listening interface. from voiceconnection.
+    const channel = message.member.voice.channel;
+    //const connection = await channel.join();
+    const receiver = connection.receiver;
+
+    
+  receiver.speaking.on('start', (userId) => { //triggers an event on user speaking, gets a user returs their username
+      const user = client.users.cache.get(userId);
+      console.log(`Bot is now listening to ${user.username}`);
+      convertAudioToText(data);
+      //where we need to listen for keyword, if keyword is not heard, do not record audio.
+    });
+
+    receiver.speaking.on('end', (userId) => {
+      const user = client.users.cache.get(userId);
+      //when keyword has been spoken and user stops speaking
+      console.log(`Bot stopped listening to ${user.username}`);
+    });
+  */
+
+    //def transcribe_audio_to_text(filename):     
+    //with sr.AudioFile(filename) as source:
+    //    audio = recognizer.record(source)
+    //    try:
+    //        return recognizer.recognize_google(audio)
+    //    except:
+    //        print('Skipping unknown error')
+    //converting audio to text takes a filename
+  //}
+
+
+
+
+
+//connection.on(VoiceConnectionStatus.Ready, () => {
+//	console.log('The connection has entered the Ready state - ready to play audio!');
+//});
 
 /** import * from os
 import discord
@@ -415,4 +457,63 @@ def main():
             except Exception as e:
                         print("an error occured: {}".format(e))
 if __name__ == "__main__":
+
+
+  /** 
+  const receiver = connection.receiver;
+  connection.on('stateChange', (oldState, newState) => {
+    if (newState.status === 'ready') {
+      receiver.subscribe(connection.joinConfig.user.id);
+    }
+  });
+
+  
+  receiver.on('pcm', (userID, buffer) => {
+    console.log(`Received audio from ${userID}: ${buffer}`);
+  });
+  */
+  
+  /**
+  connection.on('speaking', (user, speaking) => {
+    const receiver = connection.receiver;
+    if (speaking) {
+      const audioStream = receiver.createStream(user, { mode: 'pcm' });
+      audioStream.on('data', (chunk) => {
+        // Perform speech recognition here
+        console.log(`Received audio data chunk from ${user.username}`);
+      });
+    }
+  });
+
+ //trying to understand how audioplayer works here.
+  //AudioPlayer#pause(), AudioPlayer#unpause(), and AudioPlayer#stop().
+
+  //const resource = createAudioResource('/home/user/voice/track.mp3'); example of user source to play.
+ // receiver.speaking   on('speaking', (user, speaking) => {
+ //  if (speaking) {
+ //     const audioStream = receiver.createStream(user, { mode: 'pcm' });
+ //     audioStream.on('data', (chunk) => {
+        // Perform speech recognition here
+ //       console.log(`Received audio data chunk from ${user.username}`);
+ //     });
+ //   }
+ // });
+
+/** 
+//const client = new Client({ intents: [
+IntentsBitField.Flags.Guilds,
+IntentsBitField.Flags.GuildMessages,
+IntentsBitField.Flags.MessageContent,
+IntentsBitField.Flags.GuildMembers,
+IntentsBitField.Flags.GuildVoiceStates,
+IntentsBitField.Flags.DirectMessages,
+IntentsBitField.Flags.GuildMessageTyping,
+IntentsBitField.Flags.GuildMessageReactions,
+IntentsBitField.Flags.DirectMessageReactions,
+IntentsBitField.Flags.GuildVoiceStates,
+IntentsBitField.Flags.GuildInvites,
+]})
+
+
+ // Garbage comment section end //
 */
