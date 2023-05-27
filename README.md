@@ -7,7 +7,7 @@ Changelog 1.2
 
 old methods<br>
 !join used to join the channel you want it to listen in.<br>
-!disc used to make it leave voicechannel.
+!disc used to make it leave voicechannel.<br>
 !savegpt -- saves the prompt locally<br>
 !runVoice -- plays the prompt via discord<br>
 
