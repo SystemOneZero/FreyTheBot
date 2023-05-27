@@ -3,19 +3,21 @@ A javascript based speech recog llm discord bot.
 
 Project is currently being built...
 
-Changelog 1.1
+Changelog 1.2
 
 old methods<br>
 !join used to join the channel you want it to listen in.<br>
 !disc used to make it leave voicechannel.
+!savegpt -- saves the prompt locally<br>
+!runVoice -- plays the prompt via discord<br>
 
-Added three methods that run currently to test it out a bit.
+Cleaned up a lot of messy code and comments.<br>
+
+Changed gpt to automatically output the question directly however there does seem to be some sorta problem with the audio player just deciding to stop randomly. I am still not sure what causes this
+connection to discord lost, some sorta bug in the audioplayer, hmm. sometimes it works fine.
+So frey now sends a response back which in turn activates her to speak.<br>
 
 !gpt -- generates the prompt sent to gpt takes a user input after the command. example : !gpt what is a dog<br>
-!savegpt -- saves the prompt locally<br>
-!test -- plays the prompt via discord<br>
-
-These are tempoary and only serve as proof of concept atm.
 
 To run this, you need to have a .env file setup with the right values<br>
 an api key from your prefered llm, and if not openai you need to change the api calls<br>
